@@ -1,9 +1,11 @@
 #ifndef AST_H
 #define AST_H
 
-#include <vector>
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
+
+#include <llvm-3.5/llvm/IR/Value.h>
 
 namespace barnie {
 
@@ -11,6 +13,7 @@ namespace barnie {
 struct expr_ast {
  public:
   virtual ~expr_ast() {}
+  virtual llvm::Value *codegen() = 0;
 };
 
 using expr_ptr = std::unique_ptr<expr_ast>;
@@ -19,18 +22,22 @@ struct number_expr_ast : public expr_ast {
   double value;
 
   number_expr_ast(double v) : value(v) {}
+  virtual llvm::Value *codegen();
 };
 
 struct text_expr_ast : public expr_ast {
   std::string text;
 
   text_expr_ast(const std::string &s) : text(s) {}
+  virtual llvm::Value *codegen();
 };
 
 struct variable_expr_ast : public expr_ast {
+  std::string type;
   std::string name;
 
-  variable_expr_ast(std::string n) : name(n) {}
+  variable_expr_ast(std::string t, std::string n) : type(t), name(n) {}
+  virtual llvm::Value *codegen();
 };
 
 struct binary_expr_ast : public expr_ast {
@@ -38,15 +45,17 @@ struct binary_expr_ast : public expr_ast {
   expr_ptr lhs, rhs;
 
   binary_expr_ast(expr_ptr l, char o, expr_ptr r) 
-  : lhs(std::move(l)), op(o), rhs(std::move(r)) {}
+    : lhs(std::move(l)), op(o), rhs(std::move(r)) {}
+  virtual llvm::Value *codegen();
 };
 
 struct call_expr_ast : public expr_ast {
-  std::string callee;
+  std::string name;
   std::vector<expr_ptr> args;
 
-  call_expr_ast(const std::string &c, std::vector<expr_ptr> a)
-   : callee(c), args(std::move(a)) {}
+  call_expr_ast(const std::string &n, std::vector<expr_ptr> a)
+   : name(n), args(std::move(a)) {}
+  virtual llvm::Value *codegen();
 };
 
 // Function name, argument names, and argument types 
