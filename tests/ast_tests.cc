@@ -1,6 +1,6 @@
 #include <assert.h>
 
-#include "../src/ast.h"
+#include "../src/codegen.h"
 
 void number_ast_test() {
   auto number = new barnie::number_expr_ast(5);

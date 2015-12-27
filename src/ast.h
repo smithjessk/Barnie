@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include <llvm-3.5/llvm/IR/Value.h>
+#include <llvm/IR/Value.h>
 
 namespace barnie {
 

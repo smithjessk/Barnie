@@ -3,28 +3,31 @@
 
 #include <memory>
 #include <map>
+#include <string>
+#include <sstream>
 
 #include "ast.h"
 
-using namespace llvm;
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/Support/ErrorHandling.h>
 
 namespace barnie {
   static std::unique_ptr<llvm::Module> *module;
-  static IRBuilder<> builder(llvm::getGlobalContext());
+  static llvm::IRBuilder<> builder(llvm::getGlobalContext());
   static std::map<std::string, llvm::Value *> named_values;
 
-  llvm::Value *error_v(const char *str) {
-    llvm::Error(str);
+  llvm::Value *error_v(const std::string str) {
+    llvm::report_fatal_error(str, true);
     return nullptr;
   }
 
   llvm::Value *number_expr_ast::codegen() {
-    return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(val));
+    return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(value));
   }
 
-  llvm:Value *text_expr_ast::codegen() {
+  llvm::Value *text_expr_ast::codegen() {
     return llvm::ConstantDataSequential::get(llvm::getGlobalContext(), 
-      llvm::StringRef(text_expr_ast.text));
+      llvm::StringRef(text));
   }
 
   llvm::Value *variable_expr_ast::codegen() {
@@ -43,25 +46,30 @@ namespace barnie {
       case '+':
         return builder.CreateFAdd(l, r, "addtmp");
       case '-':
-        return buidler.CreateFSub(l, r, "subtmp");
+        return builder.CreateFSub(l, r, "subtmp");
       case '*':
         return builder.CreateFMul(l, r, "multmp");
       case '/':
-        return buidler.CreateFDiv(l, r, "divtmp");
+        return builder.CreateFDiv(l, r, "divtmp");
       default:
-        return error_v("Invalid binary operator " + op);
+        std::stringstream ss;
+        ss << "Invalid binary operator: ";
+        ss << op;
+        std::string error_msg;
+        ss >> error_msg;
+        return error_v(error_msg);
     }
   }
 
   llvm::Value *call_expr_ast::codegen() {
     llvm::Function *function = module->getFunction(name);
-    if (!function) return error_v
+    if (!function) return error_v("No function named " + name);
 
     if (function->arg_size() != args.size()) {
-      return error_v("Incorrect number of arguments passed")
+      return error_v("Incorrect number of arguments passed");
     }
 
-    std::vector<Value *> args_vec;
+    std::vector<llvm::Value *> args_vec;
     for (size_t i = 0; i != args.size(); ++i) {
       args_vec.push_back(args[i]->codegen());
       if (!args_vec.back()) {
